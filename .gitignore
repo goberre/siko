@@ -42,6 +42,8 @@ Thumbs.db
 # ─── 테스트 ──────────────────────────────────────────────
 /coverage
 
-# ─── Vercel / Cloudflare ─────────────────────────────────
+# ─── Cloudflare / OpenNext 빌드 산출물 ────────────────────
 .vercel
 .wrangler
+.open-next
+cloudflare-env.d.ts

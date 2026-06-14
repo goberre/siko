@@ -22,27 +22,35 @@ GitHub (코드) → Cloudflare Pages (호스팅) + Neon (PostgreSQL DB)
 
 ---
 
-## Step 2: Cloudflare Pages 프로젝트 연결 (10분)
+## Step 2: Cloudflare Workers 프로젝트 연결 (10분)
+
+> 이 프로젝트는 `@opennextjs/cloudflare` 어댑터로 **Cloudflare Workers**에 배포합니다.
+> (Pages 아님 — Workers입니다. Node.js 런타임 지원으로 Prisma/bcrypt가 그대로 동작합니다.)
 
 1. [https://dash.cloudflare.com](https://dash.cloudflare.com) 로그인
-2. **Workers & Pages** → **Create** → **Pages** 탭 → **Connect to Git**
+2. **Workers & Pages** → **Create** → **Workers** → **Import a repository** (Git 연결)
 3. GitHub 계정 연결 → `goberre/siko` 레포 선택
 4. **Build settings**:
-   - Framework preset: `Next.js`
-   - Build command: `npx prisma generate && npm run build`
-   - Output directory: `.next`
-5. **Environment Variables** (Settings > Environment Variables) 에 아래 값 추가:
+   - Build command: `npx opennextjs-cloudflare build`
+   - Deploy command: `npx wrangler deploy`
+5. **Environment variables & Secrets** 에 아래 값 추가:
 
    | 키 | 값 |
    |----|----|
    | `DATABASE_URL` | Neon 연결 문자열 |
    | `AUTH_SECRET` | 랜덤 64바이트 base64 |
    | `NEXTAUTH_SECRET` | AUTH_SECRET과 동일 |
-   | `NEXTAUTH_URL` | `https://siko.pages.dev` (배포 후 실제 주소) |
+   | `NEXTAUTH_URL` | 배포 후 실제 `*.workers.dev` 주소 |
    | `NTS_SERVICE_KEY` | 국세청 API 키 |
    | `CRON_SECRET` | 랜덤 32바이트 hex |
 
 6. **Save and Deploy** 클릭
+
+### 로컬에서 직접 배포 (대안)
+```bash
+npx wrangler login          # 브라우저 인증 1회
+npm run cf:deploy           # 빌드 + 배포 한 번에
+```
 
 ---
 

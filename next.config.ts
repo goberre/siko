@@ -1,9 +1,4 @@
 import type { NextConfig } from "next";
-import { setupDevPlatform } from "@cloudflare/next-on-pages/next-dev";
-
-if (process.env.NODE_ENV === "development") {
-  await setupDevPlatform();
-}
 
 const nextConfig: NextConfig = {
   // API 요청 최대 크기 (기본 4MB → 2MB로 제한)
@@ -62,3 +57,7 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Cloudflare 개발 환경 지원 (next dev 시 Workers 런타임 에뮬레이션)
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+initOpenNextCloudflareForDev();
