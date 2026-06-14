@@ -31,7 +31,7 @@ GitHub (코드) → Cloudflare Pages (호스팅) + Neon (PostgreSQL DB)
 2. **Workers & Pages** → **Create** → **Workers** → **Import a repository** (Git 연결)
 3. GitHub 계정 연결 → `goberre/siko` 레포 선택
 4. **Build settings**:
-   - Build command: `npx opennextjs-cloudflare build`
+   - Build command: `npm run cf:build`
    - Deploy command: `npx wrangler deploy`
 5. **Environment variables & Secrets** 에 아래 값 추가:
 
