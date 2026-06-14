@@ -1,17 +1,4 @@
 name = "siko"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-
-# Cloudflare Pages 배포 설정
-# 이 파일은 wrangler CLI 또는 Cloudflare Pages 대시보드에서 사용됩니다.
-
-[vars]
-NODE_ENV = "production"
-
-# 아래 시크릿 값들은 Cloudflare Pages 대시보드 > Settings > Environment Variables 에서 추가
-# DATABASE_URL         = "postgresql://..."    ← Neon 연결 문자열
-# AUTH_SECRET          = "..."                 ← 랜덤 32바이트 문자열
-# NEXTAUTH_SECRET      = "..."                 ← AUTH_SECRET 과 동일
-# NEXTAUTH_URL         = "https://your-domain.pages.dev"
-# NTS_SERVICE_KEY      = "..."                 ← 국세청 API 키
-# CRON_SECRET          = "..."                 ← 크론 보안 키
+pages_build_output_dir = ".vercel/output/static"
