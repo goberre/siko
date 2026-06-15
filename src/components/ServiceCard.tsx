@@ -31,7 +31,7 @@ export default function ServiceCard({ service }: { service: Service }) {
           {categoryIcons[service.category] ?? "⚡"}
         </div>
         {service.badge && (
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeColors[service.badge]}`}>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeColors[service.badge as keyof typeof badgeColors] ?? "bg-slate-100 text-slate-600"}`}>
             {service.badge}
           </span>
         )}

@@ -91,6 +91,26 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
+// ─── 서비스 ──────────────────────────────────────────────
+
+model Service {
+  id          String   @id @default(cuid())
+  title       String
+  category    String
+  subcategory String   @default("")
+  industry    String[] // 업종 ID 배열
+  price       Int
+  priceUnit   String   @default("건")
+  rating      Float    @default(5.0)
+  reviewCount Int      @default(0)
+  badge       String?  // "인기" | "신규" | "추천"
+  description String   @default("")
+  tags        String[]
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // ─── 주문 ────────────────────────────────────────────────
 
 model Order {

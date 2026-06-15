@@ -1,4 +1,4 @@
-import { services, categories } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,9 +14,7 @@ import {
 } from "lucide-react";
 import ServiceCard from "@/components/ServiceCard";
 
-export function generateStaticParams() {
-  return services.map((s) => ({ id: s.id }));
-}
+export const dynamic = "force-dynamic";
 
 const categoryNames: Record<string, string> = {
   store: "스토어",
@@ -41,12 +39,14 @@ export default async function ServiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const service = services.find((s) => s.id === id);
-  if (!service) notFound();
+  const service = await prisma.service.findUnique({ where: { id } });
+  if (!service || !service.active) notFound();
 
-  const relatedServices = services
-    .filter((s) => s.category === service.category && s.id !== service.id)
-    .slice(0, 4);
+  const relatedServices = await prisma.service.findMany({
+    where: { category: service.category, id: { not: service.id }, active: true },
+    orderBy: { reviewCount: "desc" },
+    take: 4,
+  });
 
   const stars = Array.from({ length: 5 }, (_, i) => i < Math.round(service.rating));
 

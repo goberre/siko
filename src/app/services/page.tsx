@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { services, categories, industries } from "@/lib/data";
+import { categories, industries } from "@/lib/data";
+import type { Service } from "@/lib/data";
 import ServiceCard from "@/components/ServiceCard";
 import { ChevronDown, Search, X } from "lucide-react";
 
@@ -23,11 +24,21 @@ function ServicesContent() {
   const industryParam = searchParams.get("industry");
   const queryParam = searchParams.get("q") || "";
 
+  const [services, setServices] = useState<Service[]>([]);
+  const [loadingServices, setLoadingServices] = useState(true);
   const [filterMode, setFilterMode] = useState<FilterMode>(industryParam ? "industry" : "platform");
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || "all");
   const [selectedIndustry, setSelectedIndustry] = useState(industryParam || "all");
   const [sortBy, setSortBy] = useState("popular");
   const [localSearch, setLocalSearch] = useState(queryParam);
+
+  useEffect(() => {
+    fetch("/api/services")
+      .then((r) => r.json())
+      .then((data) => setServices(Array.isArray(data) ? data : []))
+      .catch(() => setServices([]))
+      .finally(() => setLoadingServices(false));
+  }, []);
 
   const filtered = useMemo(() => {
     let result = [...services];
@@ -205,7 +216,12 @@ function ServicesContent() {
             </div>
 
             {/* Grid */}
-            {filtered.length === 0 ? (
+            {loadingServices ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-sm text-slate-500">서비스 목록 불러오는 중...</p>
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
                   <Search className="w-7 h-7 text-slate-400" />

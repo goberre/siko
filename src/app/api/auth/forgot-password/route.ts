@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { writeAuditLog } from "@/lib/auditLog";
+import { sendPasswordResetEmail } from "@/lib/email";
 import { randomBytes } from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -46,10 +47,17 @@ export async function POST(req: NextRequest) {
 
   await writeAuditLog({ action: "PASSWORD_RESET_REQUEST", userId: user.id, ip });
 
-  // TODO: 이메일 발송 (Resend / Nodemailer 연동)
-  // 현재는 개발환경에서 콘솔 출력
-  if (process.env.NODE_ENV === "development") {
-    console.log("\n🔑 [비밀번호 재설정 링크]");
+  // 이메일 발송 (Resend)
+  if (process.env.RESEND_API_KEY) {
+    try {
+      await sendPasswordResetEmail({ to: user.email, name: user.name, resetUrl });
+    } catch (err) {
+      console.error("[forgot-password] 이메일 발송 오류:", err);
+      // 이메일 실패해도 토큰은 생성됐으므로 성공 응답 (보안상 에러 노출 금지)
+    }
+  } else {
+    // RESEND_API_KEY 미설정 시 개발 로그로 대체
+    console.log("\n🔑 [비밀번호 재설정 링크 - RESEND_API_KEY 미설정]");
     console.log(`   수신자: ${user.name} (${user.email})`);
     console.log(`   링크:   ${resetUrl}`);
     console.log(`   유효:   1시간\n`);

@@ -1,7 +1,7 @@
 import Hero from "@/components/Hero";
 import CategoryGrid from "@/components/CategoryGrid";
 import ServiceCard from "@/components/ServiceCard";
-import { bestServices, services } from "@/lib/data";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { ArrowRight, ShieldCheck, Zap, HeartHandshake, BarChart3 } from "lucide-react";
 
@@ -28,9 +28,15 @@ const features = [
   },
 ];
 
-export default function Home() {
-  const newServices = services.filter((s) => s.badge === "신규").slice(0, 4);
-  const recommendedServices = services.filter((s) => s.badge === "추천").slice(0, 4);
+export default async function Home() {
+  const allServices = await prisma.service.findMany({
+    where: { active: true },
+    orderBy: { reviewCount: "desc" },
+  }).catch(() => []);
+
+  const bestServices    = allServices.filter((s) => s.badge === "인기").slice(0, 8);
+  const newServices     = allServices.filter((s) => s.badge === "신규").slice(0, 4);
+  const recommendedServices = allServices.filter((s) => s.badge === "추천").slice(0, 4);
 
   return (
     <div>

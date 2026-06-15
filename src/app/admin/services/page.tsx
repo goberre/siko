@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { services as initialServices, categories, industries } from "@/lib/data";
+import { useState, useRef, useEffect } from "react";
+import { categories, industries } from "@/lib/data";
 import type { Service } from "@/lib/data";
 import { parseExcel } from "@/lib/excel";
 import type { ParseResult } from "@/lib/excel";
@@ -53,7 +53,8 @@ const emptyForm = (): Omit<Service, "id"> => ({
 /* ─── main component ────────────────────────────────────── */
 
 export default function AdminServicesPage() {
-  const [serviceList, setServiceList] = useState<Service[]>(initialServices);
+  const [serviceList, setServiceList] = useState<Service[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
 
@@ -64,12 +65,23 @@ export default function AdminServicesPage() {
   const [tagInput, setTagInput] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Excel state
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [xlResult, setXlResult] = useState<ParseResult | null>(null);
   const [xlLoading, setXlLoading] = useState(false);
   const [xlModal, setXlModal] = useState(false);
+
+  // DB에서 서비스 목록 가져오기
+  useEffect(() => {
+    fetch("/api/admin/services")
+      .then((r) => r.json())
+      .then((data) => { setServiceList(Array.isArray(data) ? data : []); })
+      .catch(() => setApiError("서비스 목록을 불러오지 못했습니다."))
+      .finally(() => setLoadingList(false));
+  }, []);
 
   /* filtered list */
   const filtered = serviceList.filter((s) => {
@@ -106,29 +118,51 @@ export default function AdminServicesPage() {
     setPanelOpen(true);
   };
 
-  /* save */
-  const handleSave = () => {
+  /* save — DB API 호출 */
+  const handleSave = async () => {
     if (!form.title.trim()) return;
-    if (editingId) {
-      setServiceList((prev) =>
-        prev.map((s) => (s.id === editingId ? { ...form, id: editingId } : s))
-      );
-    } else {
-      const newId = `custom-${Date.now()}`;
-      setServiceList((prev) => [{ ...form, id: newId }, ...prev]);
+    setSaving(true);
+    setApiError(null);
+    try {
+      if (editingId) {
+        const res = await fetch(`/api/admin/services/${editingId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const updated: Service = await res.json();
+        setServiceList((prev) => prev.map((s) => s.id === editingId ? updated : s));
+      } else {
+        const res = await fetch("/api/admin/services", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const { created } = await res.json();
+        if (created?.[0]) setServiceList((prev) => [created[0], ...prev]);
+      }
+      setSaved(true);
+      setTimeout(() => { setSaved(false); setPanelOpen(false); }, 800);
+    } catch {
+      setApiError("저장에 실패했습니다. 다시 시도해주세요.");
+    } finally {
+      setSaving(false);
     }
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      setPanelOpen(false);
-    }, 800);
   };
 
-  /* delete */
-  const handleDelete = (id: string) => {
-    setServiceList((prev) => prev.filter((s) => s.id !== id));
-    setDeleteConfirm(null);
-    if (editingId === id) setPanelOpen(false);
+  /* delete — DB API 호출 */
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/services/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setServiceList((prev) => prev.filter((s) => s.id !== id));
+      setDeleteConfirm(null);
+      if (editingId === id) setPanelOpen(false);
+    } catch {
+      setApiError("삭제에 실패했습니다.");
+    }
   };
 
   /* Excel handlers */
@@ -148,11 +182,27 @@ export default function AdminServicesPage() {
     }
   };
 
-  const handleXlConfirm = () => {
+  const handleXlConfirm = async () => {
     if (!xlResult) return;
-    setServiceList((prev) => [...xlResult.ok, ...prev]);
-    setXlModal(false);
-    setXlResult(null);
+    setXlLoading(true);
+    setApiError(null);
+    try {
+      const res = await fetch("/api/admin/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(xlResult.ok),
+      });
+      if (!res.ok) throw new Error();
+      const { created, errors: apiErrs } = await res.json();
+      setServiceList((prev) => [...created, ...prev]);
+      if (apiErrs?.length) setApiError(`${apiErrs.length}개 항목 등록 실패`);
+    } catch {
+      setApiError("일괄 등록에 실패했습니다.");
+    } finally {
+      setXlLoading(false);
+      setXlModal(false);
+      setXlResult(null);
+    }
   };
 
   /* tag helpers */
@@ -172,6 +222,14 @@ export default function AdminServicesPage() {
 
       {/* ── LEFT: List ──────────────────────────────── */}
       <div className={`flex flex-col flex-1 min-w-0 overflow-hidden transition-all duration-300 ${panelOpen ? "lg:mr-[440px]" : ""}`}>
+
+        {/* API 오류 알림 */}
+        {apiError && (
+          <div className="shrink-0 mx-6 mt-4 px-4 py-2.5 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl flex items-center justify-between">
+            <span>{apiError}</span>
+            <button onClick={() => setApiError(null)} className="ml-3 text-red-400 hover:text-red-600">✕</button>
+          </div>
+        )}
 
         {/* Toolbar */}
         <div className="shrink-0 px-6 py-5 bg-white border-b border-slate-100 space-y-4">
@@ -256,7 +314,12 @@ export default function AdminServicesPage() {
 
         {/* Service Cards */}
         <div className="flex-1 overflow-y-auto p-6">
-          {filtered.length === 0 ? (
+          {loadingList ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+              <p className="text-sm text-slate-400">서비스 목록 불러오는 중...</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <p className="text-sm text-slate-400 font-medium">검색 결과가 없습니다</p>
             </div>
@@ -551,17 +614,23 @@ export default function AdminServicesPage() {
               )}
               <button
                 onClick={handleSave}
-                disabled={!form.title.trim()}
+                disabled={!form.title.trim() || saving}
                 className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
                   saved
                     ? "bg-green-600 text-white"
+                    : saving
+                    ? "bg-blue-400 text-white cursor-not-allowed"
                     : form.title.trim()
                     ? "bg-blue-600 hover:bg-blue-700 text-white"
                     : "bg-slate-100 text-slate-400 cursor-not-allowed"
                 }`}
               >
-                <Save className="w-4 h-4" />
-                {saved ? "저장됨!" : editingId ? "변경 저장" : "서비스 추가"}
+                {saving ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {saved ? "저장됨!" : saving ? "저장 중..." : editingId ? "변경 저장" : "서비스 추가"}
               </button>
             </div>
           </aside>

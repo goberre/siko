@@ -8,7 +8,7 @@ export type Service = {
   priceUnit: string;
   rating: number;
   reviewCount: number;
-  badge?: "인기" | "신규" | "추천";
+  badge?: string | null;
   description: string;
   tags: string[];
 };
