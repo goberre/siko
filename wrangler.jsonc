@@ -1,5 +1,4 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "siko",
   "main": ".open-next/worker.js",
   // Paid 플랜 기준 최신 안정 버전 (nodejs_compat v2 포함)
@@ -8,10 +7,6 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  },
-  // Paid 플랜 전용: DB(싱가포르)에 가장 가까운 데이터센터로 자동 라우팅
-  "smart_placement": {
-    "mode": "smart"
   },
   // CPU 과부하 방지 (Paid 플랜 기본 30초, 명시적으로 제한)
   "limits": {
