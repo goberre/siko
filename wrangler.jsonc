@@ -1,6 +1,6 @@
 {
   "name": "siko",
-  "main": ".open-next/worker.js",
+  "main": "./worker.ts",
   // Paid 플랜 기준 최신 안정 버전 (nodejs_compat v2 포함)
   "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat"],
@@ -15,5 +15,9 @@
   // Workers 대시보드에서 실시간 로그 확인 가능
   "observability": {
     "enabled": true
+  },
+  // Cron Triggers - 사업자 재검증 자동화 (KST 기준 매일 새벽 2시)
+  "triggers": {
+    "crons": ["0 17 * * *"]
   }
 }

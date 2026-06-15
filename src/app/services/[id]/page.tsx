@@ -1,18 +1,17 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   Star,
   ChevronRight,
-  ShoppingCart,
-  Zap,
   ShieldCheck,
   Clock,
-  MessageCircle,
   TrendingUp,
   CheckCircle2,
 } from "lucide-react";
 import ServiceCard from "@/components/ServiceCard";
+import OrderPanel from "@/components/OrderPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +26,6 @@ const categoryNames: Record<string, string> = {
   etc: "기타 플랫폼",
 };
 
-const tierPricing = [
-  { name: "스타터", multiplier: 1, qty: "소량", desc: "처음 시작하는 분들에게 적합" },
-  { name: "스탠다드", multiplier: 2.5, qty: "중량", desc: "꾸준한 성장을 원하는 분들에게" },
-  { name: "프로", multiplier: 6, qty: "대량", desc: "빠른 성장이 필요한 분들에게" },
-];
 
 export default async function ServiceDetailPage({
   params,
@@ -39,7 +33,11 @@ export default async function ServiceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const service = await prisma.service.findUnique({ where: { id } });
+
+  const [service, session] = await Promise.all([
+    prisma.service.findUnique({ where: { id } }),
+    auth(),
+  ]);
   if (!service || !service.active) notFound();
 
   const relatedServices = await prisma.service.findMany({
@@ -175,63 +173,13 @@ export default async function ServiceDetailPage({
 
           {/* Right: Order Panel */}
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 sticky top-24">
-              <div className="mb-5">
-                <div className="text-2xl font-bold text-slate-900">
-                  {service.price.toLocaleString()}원
-                  <span className="text-base font-normal text-slate-400 ml-1">~/{service.priceUnit}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">VAT 포함 · 수량에 따라 가격 변동</p>
-              </div>
-
-              {/* Tiers */}
-              <div className="space-y-2 mb-5">
-                {tierPricing.map((tier, i) => (
-                  <label
-                    key={tier.name}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                      i === 1
-                        ? "border-blue-300 bg-blue-50"
-                        : "border-slate-100 hover:border-slate-200 bg-white"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="tier"
-                      defaultChecked={i === 1}
-                      className="mt-0.5 accent-blue-600"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-slate-900">{tier.name}</span>
-                        <span className="text-sm font-bold text-slate-900">
-                          {(service.price * tier.multiplier).toLocaleString()}원~
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{tier.desc}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-
-              <button className="w-full flex items-center justify-center gap-2 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors mb-3">
-                <ShoppingCart className="w-4 h-4" />
-                장바구니 담기
-              </button>
-              <button className="w-full flex items-center justify-center gap-2 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-xl transition-colors mb-4">
-                <Zap className="w-4 h-4" />
-                바로 주문하기
-              </button>
-
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm rounded-xl transition-colors">
-                <MessageCircle className="w-4 h-4" />
-                상담 문의하기
-              </button>
-
-              <p className="text-center text-xs text-slate-400 mt-4">
-                결제 후 24시간 이내 작업 시작 보장
-              </p>
-            </div>
+            <OrderPanel
+              serviceId={service.id}
+              serviceName={service.title}
+              basePrice={service.price}
+              priceUnit={service.priceUnit}
+              isLoggedIn={!!session}
+            />
           </div>
         </div>
 
