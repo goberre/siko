@@ -2,17 +2,22 @@ import {
   TrendingUp, ShoppingBag, Users, Clock,
   Package, ArrowRight, BarChart3, Inbox,
 } from "lucide-react";
-import { services } from "@/lib/data";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
   const session = await auth();
   if (!session || session.user.role !== "admin") redirect("/");
-  const activeServices = services.length;
+
+  const [activeServices, totalUsers, totalOrders] = await Promise.all([
+    prisma.service.count({ where: { active: true } }).catch(() => 0),
+    prisma.user.count({ where: { role: "user" } }).catch(() => 0),
+    prisma.order.count().catch(() => 0),
+  ]);
 
   const statCards = [
     {
@@ -25,8 +30,8 @@ export default async function AdminDashboard() {
     },
     {
       label: "총 주문 수",
-      value: "0건",
-      sub: "아직 주문이 없습니다",
+      value: `${totalOrders}건`,
+      sub: totalOrders === 0 ? "아직 주문이 없습니다" : "전체 주문 수",
       icon: ShoppingBag,
       iconBg: "bg-purple-50",
       iconColor: "text-purple-600",
@@ -38,6 +43,14 @@ export default async function AdminDashboard() {
       icon: Package,
       iconBg: "bg-green-50",
       iconColor: "text-green-600",
+    },
+    {
+      label: "가입 회원",
+      value: `${totalUsers}명`,
+      sub: "전체 일반 회원 수",
+      icon: Users,
+      iconBg: "bg-teal-50",
+      iconColor: "text-teal-600",
     },
     {
       label: "처리 대기",

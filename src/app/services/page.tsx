@@ -68,7 +68,7 @@ function ServicesContent() {
       default: result.sort((a, b) => b.reviewCount - a.reviewCount);
     }
     return result;
-  }, [filterMode, selectedCategory, selectedIndustry, sortBy, localSearch]);
+  }, [services, filterMode, selectedCategory, selectedIndustry, sortBy, localSearch]);
 
   const activeCategory = categories.find((c) => c.id === selectedCategory);
   const activeIndustry = industries.find((i) => i.id === selectedIndustry);
