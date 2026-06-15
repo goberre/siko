@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { loginSchema } from "@/lib/validations";
@@ -35,9 +34,10 @@ const MAX_ATTEMPTS   = 5;                   // 최대 실패 횟수
 const LOCKOUT_MINS   = 30;                  // 잠금 시간 (분)
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  ...authConfig,
-  adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 }, // 7일
+  pages:     authConfig.pages,
+  callbacks: authConfig.callbacks,
+  session:   { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 }, // 7일
+  trustHost: true,
 
   providers: [
     Credentials({
@@ -47,6 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "비밀번호", type: "password" },
       },
       async authorize(credentials, req) {
+        try {
         const ip = (req as Request & { headers?: Headers })
           ?.headers?.get?.("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 
@@ -126,28 +127,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           image:            user.image,
           businessVerified: user.businessVerified,
         };
+        } catch (e) {
+          console.error("[Auth] authorize failed", e);
+          return null;
+        }
       },
     }),
   ],
-
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id               = user.id as string;
-        token.role             = user.role;
-        token.businessVerified = user.businessVerified;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token) {
-        session.user.id               = (token.id as string | undefined) ?? "";
-        session.user.role             = (token.role as string | undefined) ?? "user";
-        session.user.businessVerified = (token.businessVerified as boolean | undefined) ?? false;
-      }
-      return session;
-    },
-  },
 
   cookies: {
     sessionToken: {
@@ -155,7 +141,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         httpOnly: true,
         sameSite: "lax",
         path:     "/",
-        secure:   process.env.NODE_ENV === "production",
+        secure:   true,
       },
     },
   },

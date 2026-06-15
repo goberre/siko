@@ -37,7 +37,6 @@ function LoginForm() {
   const [loading, setLoading]   = useState(false);
   const [locked, setLocked]     = useState(false);
   const [lockedMins, setLockedMins] = useState(0);
-  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
   const [error, setError]       = useState(
     urlError ? (errorMessages[urlError] ?? errorMessages.Default) : ""
   );
@@ -53,52 +52,26 @@ function LoginForm() {
     setError("");
     setLocked(false);
 
-    // 1. 계정 상태 사전 확인
     try {
-      const check = await fetch("/api/auth/login", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ email }),
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
-      const checkData = await check.json();
 
-      if (checkData.error === "ACCOUNT_LOCKED") {
-        setLocked(true);
-        setLockedMins(checkData.lockedFor ?? 30);
+      if (res?.error) {
+        setError(errorMessages.CredentialsSignin);
         setLoading(false);
         return;
       }
-      if (checkData.error === "RATE_LIMITED") {
-        setError(checkData.message);
-        setLoading(false);
-        return;
-      }
-      if (checkData.attemptsRemaining !== undefined) {
-        setAttemptsLeft(checkData.attemptsRemaining);
-      }
+
+      // 성공 — 강제 새로고침으로 세션 반영
+      const safe = sanitizeCallbackUrl(callbackUrl);
+      window.location.href = safe;
     } catch {
-      // 사전 확인 실패 시 그냥 진행
+      setError(errorMessages.Default);
+      setLoading(false);
     }
-
-    // 2. 실제 NextAuth 로그인
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (res?.error) {
-      setError(errorMessages.CredentialsSignin);
-      // attemptsLeft 감소
-      setAttemptsLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
-      return;
-    }
-
-    const safe = sanitizeCallbackUrl(callbackUrl);
-    router.push(safe);
-    router.refresh();
   };
 
   return (
@@ -140,14 +113,7 @@ function LoginForm() {
           {error && !locked && (
             <div className="flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl mb-5 text-sm text-red-700">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <div>
-                {error}
-                {attemptsLeft !== null && attemptsLeft > 0 && (
-                  <p className="text-xs mt-0.5 text-red-500">
-                    {attemptsLeft}회 더 실패 시 계정이 30분 잠깁니다
-                  </p>
-                )}
-              </div>
+              <div>{error}</div>
             </div>
           )}
 

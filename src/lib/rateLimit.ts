@@ -1,33 +1,27 @@
 /**
  * IP 기반 Rate Limiter (in-memory)
  *
- * 한계: 서버 재시작 시 초기화됨.
- * 프로덕션에서는 Upstash Redis (@upstash/ratelimit) 교체 권장.
+ * Cloudflare Workers는 요청마다 같은 isolate를 재사용하지만,
+ * 다중 인스턴스 환경에서는 인스턴스 간 상태가 공유되지 않음.
+ * 실 트래픽이 많아지면 Cloudflare Rate Limiting 룰(대시보드)로 보완 권장.
  *
  * 현재 규칙:
- *   - 로그인:    10분에 IP당 10회
- *   - 회원가입:  10분에 IP당 5회
- *   - 비번 재설정: 10분에 IP당 3회
+ *   - 로그인:       1분에 IP당 20회 (Workers isolate 특성 반영, 넉넉하게)
+ *   - 회원가입:     1분에 IP당 5회
+ *   - 비번 재설정:  1분에 IP당 3회
+ *   - 사업자 확인:  1분에 IP당 10회
  */
 
 type LimitConfig = { max: number; windowMs: number };
 
 const store = new Map<string, { count: number; resetAt: number }>();
 
-// 오래된 엔트리 정리 (1시간마다)
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of store) {
-    if (now > v.resetAt) store.delete(k);
-  }
-}, 60 * 60 * 1000);
-
 export function checkRateLimit(key: string, config: LimitConfig): {
-  allowed:     boolean;
-  remaining:   number;
-  resetAt:     number;
+  allowed:   boolean;
+  remaining: number;
+  resetAt:   number;
 } {
-  const now = Date.now();
+  const now   = Date.now();
   const entry = store.get(key);
 
   if (!entry || now > entry.resetAt) {
@@ -44,7 +38,8 @@ export function checkRateLimit(key: string, config: LimitConfig): {
 }
 
 export const LIMITS = {
-  LOGIN:    { max: 10, windowMs: 10 * 60 * 1000 },
-  REGISTER: { max: 5,  windowMs: 10 * 60 * 1000 },
-  VERIFY:   { max: 10, windowMs:      60 * 1000  },
+  LOGIN:    { max: 20, windowMs: 60 * 1000 },        // 1분 20회
+  REGISTER: { max: 5,  windowMs: 60 * 1000 },        // 1분 5회
+  VERIFY:   { max: 10, windowMs: 60 * 1000 },        // 1분 10회
+  RESET:    { max: 3,  windowMs: 60 * 1000 },        // 1분 3회
 };

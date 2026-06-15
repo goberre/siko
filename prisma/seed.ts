@@ -8,7 +8,7 @@ const prisma  = new PrismaClient({ adapter } as ConstructorParameters<typeof Pri
 
 async function main() {
   const adminEmail    = "admin@siko.kr";
-  const adminPassword = "Admin@Siko2026!";
+  const adminPassword = "siko1234";
 
   const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (existing) {

@@ -141,7 +141,7 @@ export default function AdminServicesPage() {
       setXlResult(result);
       setXlModal(true);
     } catch {
-      alert("파일을 읽을 수 없습니다. 올바른 엑셀 파일인지 확인해주세요.");
+      alert("파일을 읽을 수 없습니다. 올바른 CSV 파일인지 확인해주세요.");
     } finally {
       setXlLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -195,7 +195,7 @@ export default function AdminServicesPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".csv,text/csv"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -205,7 +205,7 @@ export default function AdminServicesPage() {
                 className="flex items-center gap-1.5 px-3.5 py-2.5 border border-green-300 bg-green-50 hover:bg-green-100 text-green-700 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
-                {xlLoading ? "읽는 중..." : "엑셀 업로드"}
+                {xlLoading ? "읽는 중..." : "CSV 업로드"}
               </button>
 
               {/* 개별 추가 */}
@@ -578,7 +578,7 @@ export default function AdminServicesPage() {
                 <FileSpreadsheet className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <h2 className="font-bold text-slate-900">엑셀 업로드 결과</h2>
+                <h2 className="font-bold text-slate-900">CSV 업로드 결과</h2>
                 <p className="text-xs text-slate-500 mt-0.5">등록 전 내용을 확인해주세요</p>
               </div>
             </div>

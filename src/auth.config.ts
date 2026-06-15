@@ -2,7 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 
 /**
  * Edge-compatible auth config (no Prisma, no native modules).
- * Used by middleware only.
+ * Used by middleware and merged into server auth.
  */
 export const authConfig: NextAuthConfig = {
   pages: {
@@ -29,6 +29,22 @@ export const authConfig: NextAuthConfig = {
         return !isLoggedIn;
       }
       return true;
+    },
+    jwt({ token, user }) {
+      if (user) {
+        token.id               = user.id as string;
+        token.role             = (user as { role?: string }).role;
+        token.businessVerified = (user as { businessVerified?: boolean }).businessVerified;
+      }
+      return token;
+    },
+    session({ session, token }) {
+      if (token) {
+        session.user.id               = (token.id as string | undefined) ?? "";
+        session.user.role             = (token.role as string | undefined) ?? "user";
+        session.user.businessVerified = (token.businessVerified as boolean | undefined) ?? false;
+      }
+      return session;
     },
   },
 };
