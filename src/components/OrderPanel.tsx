@@ -2,38 +2,61 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, MessageCircle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { Zap, ShoppingCart, MessageCircle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import { useCart, type CartTier } from "@/lib/cartContext";
 
 const tierPricing = [
-  { name: "스타터",   multiplier: 1,   desc: "처음 시작하는 분들에게 적합" },
-  { name: "스탠다드", multiplier: 2.5, desc: "꾸준한 성장을 원하는 분들에게" },
-  { name: "프로",     multiplier: 6,   desc: "빠른 성장이 필요한 분들에게" },
+  { name: "스타터"   as CartTier, multiplier: 1,   desc: "처음 시작하는 분들에게 적합" },
+  { name: "스탠다드" as CartTier, multiplier: 2.5, desc: "꾸준한 성장을 원하는 분들에게" },
+  { name: "프로"     as CartTier, multiplier: 6,   desc: "빠른 성장이 필요한 분들에게" },
 ];
 
 interface Props {
   serviceId:   string;
   serviceName: string;
+  category:    string;
   basePrice:   number;
   priceUnit:   string;
   isLoggedIn:  boolean;
 }
 
-export default function OrderPanel({ serviceId, serviceName, basePrice, priceUnit, isLoggedIn }: Props) {
+export default function OrderPanel({
+  serviceId, serviceName, category, basePrice, priceUnit, isLoggedIn,
+}: Props) {
   const router = useRouter();
-  const [selectedTier, setSelectedTier] = useState(1);
-  const [loading,  setLoading]  = useState(false);
-  const [success,  setSuccess]  = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const { addItem, isInCart } = useCart();
 
-  // 요청사항 폼
+  const [selectedTier, setSelectedTier] = useState(1);
+  const [loading,   setLoading]   = useState(false);
+  const [success,   setSuccess]   = useState(false);
+  const [cartAdded, setCartAdded] = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
+  const [showForm,  setShowForm]  = useState(false);
+
   const [requestUrl,     setRequestUrl]     = useState("");
   const [requestKeyword, setRequestKeyword] = useState("");
   const [requestMemo,    setRequestMemo]    = useState("");
 
   const tier   = tierPricing[selectedTier];
   const amount = Math.round(basePrice * tier.multiplier);
+  const cartKey = `${serviceId}__${tier.name}`;
+  const alreadyInCart = isInCart(cartKey);
 
+  // ── 장바구니 담기 ────────────────────────────────────────
+  const handleAddToCart = () => {
+    addItem({
+      cartKey,
+      serviceId,
+      serviceName,
+      category,
+      tier:      tier.name,
+      unitPrice: amount,
+    });
+    setCartAdded(true);
+    setTimeout(() => setCartAdded(false), 2000);
+  };
+
+  // ── 바로 주문하기 ────────────────────────────────────────
   const handleOrder = async () => {
     if (!isLoggedIn) {
       router.push(`/login?callbackUrl=/services/${serviceId}`);
@@ -68,9 +91,7 @@ export default function OrderPanel({ serviceId, serviceName, basePrice, priceUni
       }
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/dashboard");
-      }, 1500);
+      setTimeout(() => router.push("/dashboard"), 1500);
     } catch (e) {
       setError(e instanceof Error ? e.message : "주문 중 오류가 발생했습니다.");
     } finally {
@@ -87,7 +108,7 @@ export default function OrderPanel({ serviceId, serviceName, basePrice, priceUni
           {basePrice.toLocaleString()}원
           <span className="text-base font-normal text-slate-400 ml-1">~/{priceUnit}</span>
         </div>
-        <p className="text-xs text-slate-500 mt-1">VAT 포함 · 수량에 따라 가격 변동</p>
+        <p className="text-xs text-slate-500 mt-1">VAT 포함 · 플랜에 따라 가격 변동</p>
       </div>
 
       {/* 티어 선택 */}
@@ -112,7 +133,7 @@ export default function OrderPanel({ serviceId, serviceName, basePrice, priceUni
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-900">{t.name}</span>
                 <span className="text-sm font-bold text-slate-900">
-                  {(basePrice * t.multiplier).toLocaleString()}원~
+                  {Math.round(basePrice * t.multiplier).toLocaleString()}원~
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">{t.desc}</p>
@@ -127,7 +148,7 @@ export default function OrderPanel({ serviceId, serviceName, basePrice, priceUni
         onClick={() => setShowForm(!showForm)}
         className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-sm text-slate-600 font-medium transition-colors"
       >
-        <span>작업 요청사항 입력 <span className="text-red-500">*필수</span></span>
+        <span>작업 요청사항 <span className="text-red-500 text-xs">(바로 주문 시 필수)</span></span>
         {showForm ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
 
@@ -145,12 +166,10 @@ export default function OrderPanel({ serviceId, serviceName, basePrice, priceUni
               placeholder="https://smartstore.naver.com/..."
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             />
-            <p className="text-[11px] text-slate-400 mt-1">플레이스, 스마트스토어, 유튜브, 앱스토어 등 URL</p>
+            <p className="text-[11px] text-slate-400 mt-1">플레이스, 스마트스토어, 유튜브, 앱스토어 등</p>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              목표 키워드
-            </label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">목표 키워드</label>
             <input
               type="text"
               value={requestKeyword}
@@ -160,13 +179,11 @@ export default function OrderPanel({ serviceId, serviceName, basePrice, priceUni
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              추가 요청사항
-            </label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">추가 요청사항</label>
             <textarea
               value={requestMemo}
               onChange={(e) => setRequestMemo(e.target.value)}
-              placeholder="작업 관련 특이사항이나 요청사항을 입력해주세요"
+              placeholder="특이사항이나 요청사항을 입력해주세요"
               rows={3}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white resize-none"
             />
@@ -175,30 +192,50 @@ export default function OrderPanel({ serviceId, serviceName, basePrice, priceUni
       )}
 
       {/* 오류 메시지 */}
-      {error && (
-        <p className="text-xs text-red-500 px-1">{error}</p>
-      )}
+      {error && <p className="text-xs text-red-500 px-1">{error}</p>}
 
-      {/* 주문 버튼 */}
-      <button
-        onClick={handleOrder}
-        disabled={loading || success}
-        className={`w-full flex items-center justify-center gap-2 py-3.5 font-semibold rounded-xl transition-colors ${
-          success
-            ? "bg-green-600 text-white"
-            : loading
-            ? "bg-blue-400 text-white cursor-not-allowed"
-            : "bg-slate-900 hover:bg-slate-800 text-white"
-        }`}
-      >
-        {success ? (
-          <><CheckCircle2 className="w-4 h-4" />주문 완료!</>
-        ) : loading ? (
-          <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />처리 중...</>
-        ) : (
-          <><Zap className="w-4 h-4" />{isLoggedIn ? "바로 주문하기" : "로그인 후 주문하기"}</>
-        )}
-      </button>
+      {/* 액션 버튼 2개 */}
+      <div className="flex gap-2">
+        {/* 장바구니 담기 */}
+        <button
+          onClick={handleAddToCart}
+          disabled={cartAdded}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold rounded-xl border transition-colors ${
+            cartAdded || alreadyInCart
+              ? "border-green-300 bg-green-50 text-green-700"
+              : "border-slate-200 hover:bg-slate-50 text-slate-700"
+          }`}
+        >
+          {cartAdded ? (
+            <><CheckCircle2 className="w-4 h-4" />담겼어요!</>
+          ) : alreadyInCart ? (
+            <><ShoppingCart className="w-4 h-4" />이미 담김</>
+          ) : (
+            <><ShoppingCart className="w-4 h-4" />장바구니</>
+          )}
+        </button>
+
+        {/* 바로 주문 */}
+        <button
+          onClick={handleOrder}
+          disabled={loading || success}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold rounded-xl transition-colors ${
+            success
+              ? "bg-green-600 text-white"
+              : loading
+              ? "bg-blue-400 text-white cursor-not-allowed"
+              : "bg-slate-900 hover:bg-slate-800 text-white"
+          }`}
+        >
+          {success ? (
+            <><CheckCircle2 className="w-4 h-4" />완료!</>
+          ) : loading ? (
+            <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />처리 중...</>
+          ) : (
+            <><Zap className="w-4 h-4" />바로 주문</>
+          )}
+        </button>
+      </div>
 
       <a
         href="http://pf.kakao.com/_siko"

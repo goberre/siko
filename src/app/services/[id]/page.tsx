@@ -176,6 +176,7 @@ export default async function ServiceDetailPage({
             <OrderPanel
               serviceId={service.id}
               serviceName={service.title}
+              category={categoryNames[service.category] ?? service.category}
               basePrice={service.price}
               priceUnit={service.priceUnit}
               isLoggedIn={!!session}

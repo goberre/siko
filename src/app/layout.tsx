@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SessionProvider from "@/components/SessionProvider";
+import { CartProvider } from "@/lib/cartContext";
 
 export const metadata: Metadata = {
   title: "SIKO - 합리적인 온라인 마케팅 플랫폼",
@@ -19,9 +20,11 @@ export default function RootLayout({
     <html lang="ko">
       <body className="min-h-screen flex flex-col">
         <SessionProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <CartProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </CartProvider>
         </SessionProvider>
       </body>
     </html>

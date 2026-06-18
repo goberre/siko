@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { categories } from "@/lib/data";
+import { useCart } from "@/lib/cartContext";
 import {
   ShoppingCart, Search, Menu, X, ChevronDown,
   Zap, User, LogOut, Settings, Package,
@@ -24,6 +25,7 @@ export default function Header() {
 
   const user = session?.user;
   const isAdmin = user?.role === "admin";
+  const { totalCount } = useCart();
 
   return (
     <>
@@ -150,9 +152,11 @@ export default function Header() {
               {/* Cart */}
               <Link href="/cart" className="relative p-2 hover:bg-slate-50 rounded-lg transition-colors">
                 <ShoppingCart className="w-5 h-5 text-slate-700" />
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  0
-                </span>
+                {totalCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {totalCount > 99 ? "99+" : totalCount}
+                  </span>
+                )}
               </Link>
 
               {/* Mobile menu toggle */}
