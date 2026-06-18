@@ -14,8 +14,8 @@ const suggestions = [
 
 const stats = [
   { icon: TrendingUp, label: "누적 서비스", value: "144개+" },
-  { icon: Users, label: "이용 고객", value: "28,000+" },
-  { icon: Star, label: "평균 평점", value: "4.9 / 5.0" },
+  { icon: Users,      label: "누적 주문",   value: "12,847건+" },
+  { icon: Star,       label: "평균 평점",   value: "4.9 / 5.0" },
 ];
 
 export default function Hero() {

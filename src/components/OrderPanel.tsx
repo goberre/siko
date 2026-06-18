@@ -2,22 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, ShoppingCart, MessageCircle, CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Zap, ShoppingCart, MessageCircle, CheckCircle2,
+  ChevronDown, ChevronUp, Minus, Plus, ShieldCheck, Clock,
+} from "lucide-react";
 import { useCart, type CartTier } from "@/lib/cartContext";
 
-const tierPricing = [
-  { name: "스타터"   as CartTier, multiplier: 1,   desc: "처음 시작하는 분들에게 적합" },
-  { name: "스탠다드" as CartTier, multiplier: 2.5, desc: "꾸준한 성장을 원하는 분들에게" },
-  { name: "프로"     as CartTier, multiplier: 6,   desc: "빠른 성장이 필요한 분들에게" },
+const TIERS = [
+  { name: "스타터"   as CartTier, mult: 1,   desc: "입문 · 소규모 테스트" },
+  { name: "스탠다드" as CartTier, mult: 2.5, desc: "가장 인기 · 꾸준한 성장" },
+  { name: "프로"     as CartTier, mult: 6,   desc: "빠른 성장 · 대규모 진행" },
 ];
 
 interface Props {
-  serviceId:   string;
+  serviceId:  string;
   serviceName: string;
-  category:    string;
-  basePrice:   number;
-  priceUnit:   string;
-  isLoggedIn:  boolean;
+  category:   string;
+  basePrice:  number;
+  priceUnit:  string;
+  isLoggedIn: boolean;
 }
 
 export default function OrderPanel({
@@ -26,37 +29,34 @@ export default function OrderPanel({
   const router = useRouter();
   const { addItem, isInCart } = useCart();
 
-  const [selectedTier, setSelectedTier] = useState(1);
-  const [loading,   setLoading]   = useState(false);
-  const [success,   setSuccess]   = useState(false);
-  const [cartAdded, setCartAdded] = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [showForm,  setShowForm]  = useState(false);
-
-  const [requestUrl,     setRequestUrl]     = useState("");
+  const [tierIdx,       setTierIdx]      = useState(1);
+  const [qty,           setQty]          = useState(1);
+  const [loading,       setLoading]      = useState(false);
+  const [success,       setSuccess]      = useState(false);
+  const [cartAdded,     setCartAdded]    = useState(false);
+  const [error,         setError]        = useState<string | null>(null);
+  const [showForm,      setShowForm]     = useState(false);
+  const [requestUrl,    setRequestUrl]   = useState("");
   const [requestKeyword, setRequestKeyword] = useState("");
-  const [requestMemo,    setRequestMemo]    = useState("");
+  const [requestMemo,   setRequestMemo]  = useState("");
 
-  const tier   = tierPricing[selectedTier];
-  const amount = Math.round(basePrice * tier.multiplier);
-  const cartKey = `${serviceId}__${tier.name}`;
-  const alreadyInCart = isInCart(cartKey);
+  const tier      = TIERS[tierIdx];
+  const unitPrice = Math.round(basePrice * tier.mult);
+  const total     = unitPrice * qty;
+  const cartKey   = `${serviceId}__${tier.name}`;
+  const inCart    = isInCart(cartKey);
 
-  // ── 장바구니 담기 ────────────────────────────────────────
+  const handleQty = (delta: number) =>
+    setQty((p) => Math.max(1, Math.min(9999, p + delta)));
+
+  // ── 장바구니 담기 ──────────────────────────────────────
   const handleAddToCart = () => {
-    addItem({
-      cartKey,
-      serviceId,
-      serviceName,
-      category,
-      tier:      tier.name,
-      unitPrice: amount,
-    });
+    addItem({ cartKey, serviceId, serviceName, category, tier: tier.name, unitPrice });
     setCartAdded(true);
     setTimeout(() => setCartAdded(false), 2000);
   };
 
-  // ── 바로 주문하기 ────────────────────────────────────────
+  // ── 바로 주문 ──────────────────────────────────────────
   const handleOrder = async () => {
     if (!isLoggedIn) {
       router.push(`/login?callbackUrl=/services/${serviceId}`);
@@ -75,21 +75,18 @@ export default function OrderPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          serviceId,
-          serviceName,
-          tier:           tier.name,
-          amount,
+          serviceId, serviceName, tier: tier.name,
+          amount:         total,
           requestUrl:     requestUrl.trim(),
           requestKeyword: requestKeyword.trim(),
           requestMemo:    requestMemo.trim(),
         }),
       });
-
+      if (res.status === 401) { router.push("/login?callbackUrl=/services/" + serviceId); return; }
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data as { error?: string }).error ?? "주문 실패");
+        const d = await res.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error ?? "주문 실패");
       }
-
       setSuccess(true);
       setTimeout(() => router.push("/dashboard"), 1500);
     } catch (e) {
@@ -100,40 +97,29 @@ export default function OrderPanel({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 sticky top-24 space-y-4">
-
-      {/* 가격 */}
-      <div>
-        <div className="text-2xl font-bold text-slate-900">
-          {basePrice.toLocaleString()}원
-          <span className="text-base font-normal text-slate-400 ml-1">~/{priceUnit}</span>
-        </div>
-        <p className="text-xs text-slate-500 mt-1">VAT 포함 · 플랜에 따라 가격 변동</p>
-      </div>
+    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden sticky top-24">
 
       {/* 티어 선택 */}
-      <div className="space-y-2">
-        {tierPricing.map((t, i) => (
+      <div className="p-5 space-y-2">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">플랜 선택</p>
+        {TIERS.map((t, i) => (
           <button
             key={t.name}
-            type="button"
-            onClick={() => setSelectedTier(i)}
-            className={`w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-colors ${
-              selectedTier === i
-                ? "border-blue-300 bg-blue-50"
-                : "border-slate-100 hover:border-slate-200 bg-white"
+            onClick={() => setTierIdx(i)}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+              tierIdx === i ? "border-blue-400 bg-blue-50" : "border-slate-100 hover:border-slate-200"
             }`}
           >
-            <div className={`w-4 h-4 rounded-full border-2 mt-0.5 shrink-0 flex items-center justify-center ${
-              selectedTier === i ? "border-blue-500 bg-blue-500" : "border-slate-300"
+            <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+              tierIdx === i ? "border-blue-500 bg-blue-500" : "border-slate-300"
             }`}>
-              {selectedTier === i && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+              {tierIdx === i && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-900">{t.name}</span>
                 <span className="text-sm font-bold text-slate-900">
-                  {Math.round(basePrice * t.multiplier).toLocaleString()}원~
+                  {Math.round(basePrice * t.mult).toLocaleString()}원~/{priceUnit}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">{t.desc}</p>
@@ -142,112 +128,157 @@ export default function OrderPanel({
         ))}
       </div>
 
-      {/* 요청사항 입력 토글 */}
-      <button
-        type="button"
-        onClick={() => setShowForm(!showForm)}
-        className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-sm text-slate-600 font-medium transition-colors"
-      >
-        <span>작업 요청사항 <span className="text-red-500 text-xs">(바로 주문 시 필수)</span></span>
-        {showForm ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-      </button>
-
-      {/* 요청사항 폼 */}
-      {(showForm || error) && (
-        <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              작업 대상 URL <span className="text-red-500">*</span>
-            </label>
+      {/* 수량 + 실시간 금액 */}
+      <div className="mx-5 mb-4 bg-slate-50 rounded-2xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-slate-700">주문 수량</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleQty(-1)}
+              className="w-7 h-7 bg-white border border-slate-200 rounded-lg flex items-center justify-center hover:bg-slate-100 transition-colors"
+            >
+              <Minus className="w-3 h-3 text-slate-600" />
+            </button>
             <input
-              type="url"
-              value={requestUrl}
-              onChange={(e) => { setRequestUrl(e.target.value); setError(null); }}
-              placeholder="https://smartstore.naver.com/..."
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              type="number"
+              min={1}
+              max={9999}
+              value={qty}
+              onChange={(e) => setQty(Math.max(1, Math.min(9999, parseInt(e.target.value) || 1)))}
+              className="w-14 text-center text-sm font-bold border border-slate-200 rounded-lg py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             />
-            <p className="text-[11px] text-slate-400 mt-1">플레이스, 스마트스토어, 유튜브, 앱스토어 등</p>
+            <button
+              onClick={() => handleQty(1)}
+              className="w-7 h-7 bg-white border border-slate-200 rounded-lg flex items-center justify-center hover:bg-slate-100 transition-colors"
+            >
+              <Plus className="w-3 h-3 text-slate-600" />
+            </button>
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">목표 키워드</label>
+        </div>
+
+        <div className="border-t border-slate-200 pt-3 space-y-1.5">
+          <div className="flex justify-between text-xs text-slate-500">
+            <span>단가</span>
+            <span>{unitPrice.toLocaleString()}원/{priceUnit}</span>
+          </div>
+          <div className="flex justify-between text-xs text-slate-500">
+            <span>수량</span>
+            <span>{qty.toLocaleString()}건</span>
+          </div>
+          <div className="flex justify-between items-center pt-1">
+            <span className="text-sm font-bold text-slate-900">예상 금액</span>
+            <span className="text-2xl font-bold text-blue-600">{total.toLocaleString()}원~</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 요청사항 토글 */}
+      <div className="px-5 mb-4">
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs text-slate-600 font-semibold transition-colors"
+        >
+          <span>작업 요청사항 <span className="text-red-500">(바로 주문 시 필수)</span></span>
+          {showForm ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
+
+        {(showForm || error) && (
+          <div className="mt-2.5 space-y-2.5 p-4 bg-slate-50 rounded-xl border border-slate-100">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                작업 대상 URL <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="url"
+                value={requestUrl}
+                onChange={(e) => { setRequestUrl(e.target.value); setError(null); }}
+                placeholder="https://smartstore.naver.com/..."
+                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${error ? "border-red-300" : "border-slate-200"}`}
+              />
+              <p className="text-[10px] text-slate-400 mt-1">플레이스·스마트스토어·유튜브·앱스토어 등</p>
+            </div>
             <input
               type="text"
               value={requestKeyword}
               onChange={(e) => setRequestKeyword(e.target.value)}
-              placeholder="예: 강남 맛집, 네이버 플레이스 상위노출"
+              placeholder="목표 키워드 (선택)"
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">추가 요청사항</label>
             <textarea
               value={requestMemo}
               onChange={(e) => setRequestMemo(e.target.value)}
-              placeholder="특이사항이나 요청사항을 입력해주세요"
-              rows={3}
+              placeholder="추가 요청사항 (선택)"
+              rows={2}
               className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white resize-none"
             />
           </div>
-        </div>
-      )}
+        )}
+        {error && <p className="text-[11px] text-red-500 mt-1.5 px-1">{error}</p>}
+      </div>
 
-      {/* 오류 메시지 */}
-      {error && <p className="text-xs text-red-500 px-1">{error}</p>}
+      {/* 버튼들 */}
+      <div className="px-5 pb-5 space-y-2.5">
+        {/* 바로 주문 */}
+        <button
+          onClick={handleOrder}
+          disabled={loading || success}
+          className={`w-full flex items-center justify-center gap-2 py-3.5 font-bold rounded-xl text-sm transition-colors ${
+            success
+              ? "bg-green-600 text-white"
+              : loading
+              ? "bg-blue-400 text-white cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
+        >
+          {success ? (
+            <><CheckCircle2 className="w-4 h-4" />주문 완료!</>
+          ) : loading ? (
+            <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />처리 중...</>
+          ) : (
+            <><Zap className="w-4 h-4" />{total.toLocaleString()}원 바로 주문하기</>
+          )}
+        </button>
 
-      {/* 액션 버튼 2개 */}
-      <div className="flex gap-2">
         {/* 장바구니 담기 */}
         <button
           onClick={handleAddToCart}
           disabled={cartAdded}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold rounded-xl border transition-colors ${
-            cartAdded || alreadyInCart
+          className={`w-full flex items-center justify-center gap-2 py-3 font-semibold rounded-xl text-sm border transition-colors ${
+            cartAdded || inCart
               ? "border-green-300 bg-green-50 text-green-700"
               : "border-slate-200 hover:bg-slate-50 text-slate-700"
           }`}
         >
           {cartAdded ? (
-            <><CheckCircle2 className="w-4 h-4" />담겼어요!</>
-          ) : alreadyInCart ? (
-            <><ShoppingCart className="w-4 h-4" />이미 담김</>
+            <><CheckCircle2 className="w-4 h-4" />장바구니에 담겼어요!</>
+          ) : inCart ? (
+            <><ShoppingCart className="w-4 h-4" />이미 장바구니에 있어요</>
           ) : (
-            <><ShoppingCart className="w-4 h-4" />장바구니</>
+            <><ShoppingCart className="w-4 h-4" />장바구니에 담기</>
           )}
         </button>
 
-        {/* 바로 주문 */}
-        <button
-          onClick={handleOrder}
-          disabled={loading || success}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-semibold rounded-xl transition-colors ${
-            success
-              ? "bg-green-600 text-white"
-              : loading
-              ? "bg-blue-400 text-white cursor-not-allowed"
-              : "bg-slate-900 hover:bg-slate-800 text-white"
-          }`}
+        {/* 상담 */}
+        <a
+          href="http://pf.kakao.com/_siko"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-slate-500 text-xs hover:text-slate-700 transition-colors"
         >
-          {success ? (
-            <><CheckCircle2 className="w-4 h-4" />완료!</>
-          ) : loading ? (
-            <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />처리 중...</>
-          ) : (
-            <><Zap className="w-4 h-4" />바로 주문</>
-          )}
-        </button>
+          <MessageCircle className="w-3.5 h-3.5" />
+          1:1 상담 문의
+        </a>
       </div>
 
-      <a
-        href="http://pf.kakao.com/_siko"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="w-full flex items-center justify-center gap-2 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm rounded-xl transition-colors"
-      >
-        <MessageCircle className="w-4 h-4" />
-        상담 문의하기
-      </a>
-
-      <p className="text-center text-xs text-slate-400">결제 후 24시간 이내 작업 시작 보장</p>
+      {/* 하단 보증 */}
+      <div className="border-t border-slate-50 px-5 py-3 flex items-center justify-center gap-4">
+        <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+          <ShieldCheck className="w-3 h-3 text-green-500" />실사용자 100%
+        </span>
+        <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+          <Clock className="w-3 h-3 text-blue-500" />24h 내 시작
+        </span>
+      </div>
     </div>
   );
 }
