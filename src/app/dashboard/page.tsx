@@ -14,9 +14,9 @@ type Order = {
   tier: string;
   amount: number;
   status: "pending" | "processing" | "completed" | "cancelled";
-  requestUrl: string;
-  requestKeyword?: string;
-  requestMemo?: string;
+  requestUrl?: string | null;
+  requestKeyword?: string | null;
+  requestMemo?: string | null;
   createdAt: string;
 };
 
@@ -175,11 +175,15 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex gap-3">
                             <span className="text-slate-500 w-20 shrink-0">작업 URL</span>
-                            <a href={order.requestUrl} target="_blank" rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline truncate flex items-center gap-1">
-                              {order.requestUrl}
-                              <ExternalLink className="w-3 h-3 shrink-0" />
-                            </a>
+                            {order.requestUrl ? (
+                              <a href={order.requestUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline truncate flex items-center gap-1 break-all">
+                                {order.requestUrl}
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 italic text-xs">미입력</span>
+                            )}
                           </div>
                           {order.requestKeyword && (
                             <div className="flex gap-3">

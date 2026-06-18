@@ -45,13 +45,15 @@ export async function POST(req: NextRequest) {
     where: { id: session.user.id! },
     select: { id: true, name: true, email: true },
   });
-  if (!user) {
+  if (!user?.email) {
     return NextResponse.json({ error: "사용자 정보를 찾을 수 없습니다." }, { status: 404 });
   }
+  const userName  = user.name  ?? "고객";
+  const userEmail = user.email;
 
   const order = await prisma.order.create({
     data: {
-      userId:         user.id,
+      userId:         user.id!,
       serviceId:      parsed.data.serviceId,
       serviceName:    parsed.data.serviceName,
       tier:           parsed.data.tier,
@@ -68,8 +70,8 @@ export async function POST(req: NextRequest) {
     await Promise.allSettled([
       // 고객에게 주문 확인 이메일
       sendOrderConfirmationEmail({
-        to:          user.email,
-        name:        user.name,
+        to:          userEmail,
+        name:        userName,
         orderId:     order.id,
         serviceName: order.serviceName,
         tier:        order.tier,
@@ -79,8 +81,8 @@ export async function POST(req: NextRequest) {
       // 관리자에게 새 주문 알림
       sendAdminOrderNotificationEmail({
         orderId:        order.id,
-        customerName:   user.name,
-        customerEmail:  user.email,
+        customerName:   userName,
+        customerEmail:  userEmail,
         serviceName:    order.serviceName,
         tier:           order.tier,
         amount:         order.amount,

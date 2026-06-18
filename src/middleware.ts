@@ -36,7 +36,10 @@ export default auth((req) => {
   }
 
   // 로그인 필요 페이지
-  if ((pathname.startsWith("/cart") || pathname.startsWith("/mypage")) && !isLoggedIn) {
+  if (
+    (pathname.startsWith("/cart") || pathname.startsWith("/dashboard") || pathname.startsWith("/mypage")) &&
+    !isLoggedIn
+  ) {
     const url = new URL("/login", req.url);
     url.searchParams.set("callbackUrl", pathname);
     return Response.redirect(url);
@@ -52,8 +55,13 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
+    "/admin",
     "/admin/:path*",
+    "/cart",
     "/cart/:path*",
+    "/dashboard",
+    "/dashboard/:path*",
+    "/mypage",
     "/mypage/:path*",
     "/login",
     "/register",

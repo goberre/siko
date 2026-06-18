@@ -50,12 +50,17 @@ export default function CartPage() {
           serviceName:    item.serviceName,
           tier:           item.tier,
           amount:         item.unitPrice * item.qty,
+
           requestUrl:     url,
           requestKeyword: (requestKwds[idx]  ?? "").trim(),
           requestMemo:    (requestMemos[idx] ?? "").trim(),
         }),
       });
 
+      if (res.status === 401) {
+        router.push("/login?callbackUrl=/cart");
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error((data as { error?: string }).error ?? "주문 실패");
@@ -107,6 +112,7 @@ export default function CartPage() {
             requestMemo:    (requestMemos[i] ?? "").trim(),
           }),
         });
+        if (res.status === 401) { router.push("/login?callbackUrl=/cart"); return; }
         if (!res.ok) throw new Error();
         setSuccessIds((p) => new Set([...p, item.cartKey]));
       } catch {
