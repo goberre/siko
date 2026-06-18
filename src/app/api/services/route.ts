@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// 공개 서비스 목록 조회
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -15,9 +14,18 @@ export async function GET(req: NextRequest) {
     const services = await prisma.service.findMany({
       where,
       orderBy: [{ badge: "asc" }, { reviewCount: "desc" }],
+      select: {
+        id: true, title: true, description: true, category: true,
+        subcategory: true, tags: true, price: true, priceUnit: true,
+        rating: true, reviewCount: true, badge: true, active: true, industry: true,
+      },
     });
 
-    return NextResponse.json(services);
+    return NextResponse.json(services, {
+      headers: {
+        "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+      },
+    });
   } catch (e) {
     console.error("[GET /api/services]", e);
     return NextResponse.json({ error: "서버 오류" }, { status: 500 });

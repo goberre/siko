@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { Star, Zap, ShoppingCart, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { useCart } from "@/lib/cartContext";
-import QuickOrderModal from "./QuickOrderModal";
 import type { Service } from "@/lib/data";
+
+const QuickOrderModal = dynamic(() => import("./QuickOrderModal"), { ssr: false });
 
 const badgeColors = {
   인기: "bg-orange-50 text-orange-600 border border-orange-200",

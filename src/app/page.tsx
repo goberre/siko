@@ -48,10 +48,17 @@ const howItWorks = [
   { step: "04", title: "작업 시작",     desc: "결제 확인 후 24시간 이내에 실사용자 작업이 시작됩니다." },
 ];
 
+export const revalidate = 60;
+
 export default async function Home() {
   const allServices = await prisma.service.findMany({
     where: { active: true },
     orderBy: { reviewCount: "desc" },
+      select: {
+        id: true, title: true, description: true, category: true,
+        subcategory: true, tags: true, price: true, priceUnit: true,
+        rating: true, reviewCount: true, badge: true, active: true, industry: true,
+      },
   }).catch(() => []);
 
   const popularServices  = allServices.filter((s) => s.badge === "인기").slice(0, 8);

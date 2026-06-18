@@ -33,7 +33,7 @@ function ServicesContent() {
   const [localSearch, setLocalSearch] = useState(queryParam);
 
   useEffect(() => {
-    fetch("/api/services")
+    fetch("/api/services", { next: { revalidate: 60 } } as RequestInit)
       .then((r) => r.json())
       .then((data) => setServices(Array.isArray(data) ? data : []))
       .catch(() => setServices([]))

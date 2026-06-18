@@ -19,19 +19,22 @@ const ACTIVITIES = [
 ];
 
 export default function ActivityTicker() {
-  const [idx, setIdx]       = useState(0);
-  const [visible, setVisible] = useState(true);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [idx, setIdx]   = useState(0);
+  const [fade, setFade] = useState(true);
+  const idxRef = useRef(0);
 
   useEffect(() => {
-    timer.current = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIdx((prev) => (prev + 1) % ACTIVITIES.length);
-        setVisible(true);
-      }, 400);
+    const id = setInterval(() => {
+      setFade(false);
+      // fade out → swap → fade in (400ms transition via CSS)
+      const swapId = setTimeout(() => {
+        idxRef.current = (idxRef.current + 1) % ACTIVITIES.length;
+        setIdx(idxRef.current);
+        setFade(true);
+      }, 350);
+      return () => clearTimeout(swapId);
     }, 3500);
-    return () => { if (timer.current) clearInterval(timer.current); };
+    return () => clearInterval(id);
   }, []);
 
   const item = ACTIVITIES[idx];
@@ -40,9 +43,8 @@ export default function ActivityTicker() {
     <div className="bg-blue-600">
       <div className="max-w-7xl mx-auto px-4">
         <div
-          className={`flex items-center justify-center gap-2 py-2 text-xs text-blue-100 transition-opacity duration-300 ${
-            visible ? "opacity-100" : "opacity-0"
-          }`}
+          className="flex items-center justify-center gap-2 py-2 text-xs text-blue-100"
+          style={{ opacity: fade ? 1 : 0, transition: "opacity 0.35s ease" }}
         >
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
