@@ -110,12 +110,12 @@ export default function Header() {
                           </Link>
                         )}
                         <Link
-                          href="/mypage/orders"
+                          href="/dashboard"
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                         >
                           <Package className="w-3.5 h-3.5 text-slate-400" />
-                          주문 내역
+                          마이페이지
                         </Link>
                         <button
                           onClick={() => { signOut({ callbackUrl: "/" }); setUserMenuOpen(false); }}
@@ -229,19 +229,28 @@ export default function Header() {
                 </Link>
               ))}
             </div>
-            <div className="px-4 pb-4 flex gap-2">
+            <div className="px-4 pb-4 flex flex-col gap-2">
               {user ? (
-                <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
-                  className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm text-red-500 font-medium"
-                >
-                  로그아웃
-                </button>
-              ) : (
                 <>
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full py-2.5 bg-blue-50 text-blue-700 rounded-xl text-sm font-semibold text-center"
+                  >
+                    마이페이지
+                  </Link>
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/" })}
+                    className="w-full py-2.5 border border-slate-200 rounded-xl text-sm text-red-500 font-medium"
+                  >
+                    로그아웃
+                  </button>
+                </>
+              ) : (
+                <div className="flex gap-2">
                   <Link href="/login"    className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 font-medium text-center" onClick={() => setMenuOpen(false)}>로그인</Link>
                   <Link href="/register" className="flex-1 py-2.5 bg-blue-600 rounded-xl text-sm text-white font-medium text-center" onClick={() => setMenuOpen(false)}>회원가입</Link>
-                </>
+                </div>
               )}
             </div>
           </div>

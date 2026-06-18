@@ -121,6 +121,15 @@ model Order {
   tier        String
   amount      Int
   status      String   @default("pending")  // pending | processing | completed | cancelled
+
+  // 작업 요청사항
+  requestUrl     String?  // 작업 대상 URL (플레이스, 스토어, 유튜브 등)
+  requestKeyword String?  // 목표 키워드
+  requestMemo    String?  // 추가 요청사항
+
+  // 관리자 메모 (진행 상황 기록)
+  adminMemo   String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

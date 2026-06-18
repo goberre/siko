@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Inbox, Clock, PlayCircle, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import {
+  Inbox, Clock, PlayCircle, CheckCircle2,
+  XCircle, RefreshCw, ExternalLink, ChevronDown, ChevronUp,
+} from "lucide-react";
 
 type Order = {
   id: string;
@@ -10,6 +13,10 @@ type Order = {
   tier: string;
   amount: number;
   status: "pending" | "processing" | "completed" | "cancelled";
+  requestUrl?: string;
+  requestKeyword?: string;
+  requestMemo?: string;
+  adminMemo?: string;
   createdAt: string;
   user: { id: string; name: string; email: string };
 };
@@ -36,12 +43,22 @@ export default function AdminOrdersPage() {
   const [activeTab, setActiveTab]   = useState<typeof ALL_STATUSES[number]>("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [apiError, setApiError]     = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [memoValues, setMemoValues] = useState<Record<string, string>>({});
+  const [savingMemo, setSavingMemo] = useState<string | null>(null);
 
   const fetchOrders = () => {
     setLoading(true);
     fetch("/api/admin/orders")
       .then((r) => r.json())
-      .then((data) => setOrders(Array.isArray(data) ? data : []))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setOrders(data);
+          const memos: Record<string, string> = {};
+          data.forEach((o: Order) => { memos[o.id] = o.adminMemo ?? ""; });
+          setMemoValues(memos);
+        }
+      })
       .catch(() => setApiError("주문 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
   };
@@ -74,6 +91,24 @@ export default function AdminOrdersPage() {
       setApiError("상태 변경에 실패했습니다.");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const saveAdminMemo = async (id: string) => {
+    setSavingMemo(id);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminMemo: memoValues[id] ?? "" }),
+      });
+      if (!res.ok) throw new Error();
+      const updated: Order = await res.json();
+      setOrders((prev) => prev.map((o) => o.id === id ? updated : o));
+    } catch {
+      setApiError("메모 저장에 실패했습니다.");
+    } finally {
+      setSavingMemo(null);
     }
   };
 
@@ -157,55 +192,117 @@ export default function AdminOrdersPage() {
           <p className="text-xs text-slate-400 mt-1.5">고객이 서비스를 주문하면 여기에 자동으로 표시됩니다</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500">주문 정보</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500 hidden sm:table-cell">고객</th>
-                <th className="text-right px-4 py-3.5 text-xs font-semibold text-slate-500 hidden md:table-cell">금액</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500">상태</th>
-                <th className="text-left px-4 py-3.5 text-xs font-semibold text-slate-500">변경</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.map((order) => (
-                <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-slate-800 line-clamp-1">{order.serviceName}</p>
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden divide-y divide-slate-50">
+          {filtered.map((order) => {
+            const isExpanded = expandedId === order.id;
+            return (
+              <div key={order.id}>
+                {/* 메인 행 */}
+                <div className="flex items-center gap-2 px-5 py-4 hover:bg-slate-50/50 transition-colors">
+                  {/* 토글 */}
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                    className="p-1 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
+                  >
+                    {isExpanded
+                      ? <ChevronUp className="w-4 h-4 text-slate-400" />
+                      : <ChevronDown className="w-4 h-4 text-slate-400" />
+                    }
+                  </button>
+
+                  {/* 주문 정보 */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-800 truncate">{order.serviceName}</p>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {order.tier} · {new Date(order.createdAt).toLocaleDateString("ko-KR")}
+                      {order.tier} · {order.amount.toLocaleString()}원 · {new Date(order.createdAt).toLocaleDateString("ko-KR")}
                     </p>
-                  </td>
-                  <td className="px-4 py-4 hidden sm:table-cell">
-                    <p className="text-slate-700">{order.user?.name}</p>
-                    <p className="text-xs text-slate-400">{order.user?.email}</p>
-                  </td>
-                  <td className="px-4 py-4 text-right hidden md:table-cell">
-                    <span className="font-semibold text-slate-900">{order.amount.toLocaleString()}원</span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_COLOR[order.status]}`}>
-                      {STATUS_LABEL[order.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4">
-                    <select
-                      value={order.status}
-                      disabled={updatingId === order.id}
-                      onChange={(e) => updateStatus(order.id, e.target.value)}
-                      className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                    >
-                      <option value="pending">대기중</option>
-                      <option value="processing">진행중</option>
-                      <option value="completed">완료</option>
-                      <option value="cancelled">취소</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+
+                  {/* 고객 */}
+                  <div className="hidden sm:block w-36 shrink-0">
+                    <p className="text-sm text-slate-700 truncate">{order.user?.name}</p>
+                    <p className="text-xs text-slate-400 truncate">{order.user?.email}</p>
+                  </div>
+
+                  {/* 상태 뱃지 */}
+                  <span className={`hidden md:inline-flex shrink-0 items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_COLOR[order.status]}`}>
+                    {STATUS_LABEL[order.status]}
+                  </span>
+
+                  {/* 상태 변경 */}
+                  <select
+                    value={order.status}
+                    disabled={updatingId === order.id}
+                    onChange={(e) => updateStatus(order.id, e.target.value)}
+                    className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 shrink-0"
+                  >
+                    <option value="pending">대기중</option>
+                    <option value="processing">진행중</option>
+                    <option value="completed">완료</option>
+                    <option value="cancelled">취소</option>
+                  </select>
+                </div>
+
+                {/* 상세 패널 */}
+                {isExpanded && (
+                  <div className="px-14 pb-5 bg-slate-50/50 border-t border-slate-100 space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-4 pt-4">
+                      {/* 요청사항 */}
+                      <div className="space-y-2.5 text-sm">
+                        <p className="font-semibold text-slate-700">작업 요청사항</p>
+                        <div className="bg-white rounded-xl border border-slate-100 p-4 space-y-2.5">
+                          {order.requestUrl && (
+                            <div>
+                              <p className="text-xs text-slate-400 mb-0.5">작업 URL</p>
+                              <a href={order.requestUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-xs flex items-center gap-1 break-all">
+                                {order.requestUrl}
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            </div>
+                          )}
+                          {order.requestKeyword && (
+                            <div>
+                              <p className="text-xs text-slate-400 mb-0.5">키워드</p>
+                              <p className="text-slate-700">{order.requestKeyword}</p>
+                            </div>
+                          )}
+                          {order.requestMemo && (
+                            <div>
+                              <p className="text-xs text-slate-400 mb-0.5">추가 요청사항</p>
+                              <p className="text-slate-700 whitespace-pre-wrap">{order.requestMemo}</p>
+                            </div>
+                          )}
+                          {!order.requestUrl && !order.requestKeyword && !order.requestMemo && (
+                            <p className="text-xs text-slate-400">요청사항 없음</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 관리자 메모 */}
+                      <div className="space-y-2.5 text-sm">
+                        <p className="font-semibold text-slate-700">관리자 메모 (내부용)</p>
+                        <textarea
+                          rows={5}
+                          value={memoValues[order.id] ?? ""}
+                          onChange={(e) => setMemoValues((prev) => ({ ...prev, [order.id]: e.target.value }))}
+                          placeholder="진행 상황, 특이사항 등 내부 메모를 입력하세요"
+                          className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        />
+                        <button
+                          onClick={() => saveAdminMemo(order.id)}
+                          disabled={savingMemo === order.id}
+                          className="px-4 py-2 bg-slate-900 text-white text-xs font-semibold rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                        >
+                          {savingMemo === order.id ? "저장 중..." : "메모 저장"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
