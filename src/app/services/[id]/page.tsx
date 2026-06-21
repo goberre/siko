@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,7 +9,15 @@ import ServiceCard from "@/components/ServiceCard";
 import OrderPanel from "@/components/OrderPanel";
 import ServiceFAQ from "@/components/ServiceFAQ";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // 1시간마다 재검증
+
+export async function generateStaticParams() {
+  const services = await prisma.service.findMany({
+    where: { active: true },
+    select: { id: true },
+  }).catch(() => []);
+  return services.map((s) => ({ id: s.id }));
+}
 
 const categoryNames: Record<string, string> = {
   store: "스토어",
@@ -37,16 +44,18 @@ export default async function ServiceDetailPage({
 }) {
   const { id } = await params;
 
-  const [service, session] = await Promise.all([
-    prisma.service.findUnique({ where: { id } }),
-    auth(),
-  ]);
+  const service = await prisma.service.findUnique({ where: { id } });
   if (!service || !service.active) notFound();
 
   const relatedServices = await prisma.service.findMany({
     where: { category: service.category, id: { not: service.id }, active: true },
     orderBy: { reviewCount: "desc" },
     take: 4,
+    select: {
+      id: true, title: true, description: true, category: true,
+      subcategory: true, tags: true, price: true, priceUnit: true,
+      rating: true, reviewCount: true, badge: true, active: true, industry: true,
+    },
   });
 
   const stars = Array.from({ length: 5 }, (_, i) => i < Math.round(service.rating));
@@ -210,7 +219,6 @@ export default async function ServiceDetailPage({
               category={categoryNames[service.category] ?? service.category}
               basePrice={service.price}
               priceUnit={service.priceUnit}
-              isLoggedIn={!!session}
             />
           </div>
         </div>

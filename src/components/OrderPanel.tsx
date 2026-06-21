@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import {
   Zap, ShoppingCart, MessageCircle, CheckCircle2,
   ChevronDown, ChevronUp, Minus, Plus, ShieldCheck, Clock,
@@ -15,18 +16,19 @@ const TIERS = [
 ];
 
 interface Props {
-  serviceId:  string;
+  serviceId:   string;
   serviceName: string;
-  category:   string;
-  basePrice:  number;
-  priceUnit:  string;
-  isLoggedIn: boolean;
+  category:    string;
+  basePrice:   number;
+  priceUnit:   string;
 }
 
 export default function OrderPanel({
-  serviceId, serviceName, category, basePrice, priceUnit, isLoggedIn,
+  serviceId, serviceName, category, basePrice, priceUnit,
 }: Props) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const isLoggedIn = !!session;
   const { addItem, isInCart } = useCart();
 
   const [tierIdx,       setTierIdx]      = useState(1);
