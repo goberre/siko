@@ -2,11 +2,10 @@ import Hero from "@/components/Hero";
 import CategoryGrid from "@/components/CategoryGrid";
 import TrustBar from "@/components/TrustBar";
 import ActivityTicker from "@/components/ActivityTicker";
-import ServiceCard from "@/components/ServiceCard";
-import { prisma } from "@/lib/prisma";
+import HomeServicesSection from "@/components/HomeServicesSection";
 import Link from "next/link";
 import {
-  ArrowRight, ShieldCheck, Zap,
+  ShieldCheck, Zap,
   HeartHandshake, BarChart3, CheckCircle2,
 } from "lucide-react";
 
@@ -48,23 +47,7 @@ const howItWorks = [
   { step: "04", title: "작업 시작",     desc: "결제 확인 후 24시간 이내에 실사용자 작업이 시작됩니다." },
 ];
 
-export const revalidate = 60;
-
-export default async function Home() {
-  const allServices = await prisma.service.findMany({
-    where: { active: true },
-    orderBy: { reviewCount: "desc" },
-      select: {
-        id: true, title: true, description: true, category: true,
-        subcategory: true, tags: true, price: true, priceUnit: true,
-        rating: true, reviewCount: true, badge: true, active: true, industry: true,
-      },
-  }).catch(() => []);
-
-  const popularServices  = allServices.filter((s) => s.badge === "인기").slice(0, 8);
-  const newServices      = allServices.filter((s) => s.badge === "신규").slice(0, 4);
-  const topServices      = allServices.slice(0, 4); // 리뷰 많은 순
-
+export default function Home() {
   return (
     <div>
       {/* 실시간 주문 피드 (맨 위) */}
@@ -83,26 +66,8 @@ export default async function Home() {
         <div className="h-px bg-slate-100" />
       </div>
 
-      {/* 인기 서비스 */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-end justify-between mb-8">
-            <div>
-              <span className="inline-block text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-full mb-2">🔥 인기</span>
-              <h2 className="text-2xl font-bold text-slate-900">가장 많이 주문한 서비스</h2>
-              <p className="mt-1 text-sm text-slate-500">실사용자들이 검증한 효과적인 마케팅</p>
-            </div>
-            <Link href="/services" className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
-              전체보기 <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {(popularServices.length > 0 ? popularServices : topServices).map((service) => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* 인기 서비스 — 클라이언트에서 CDN 캐시 API로 로드 (초기 HTML 응답 빠르게) */}
+      <HomeServicesSection />
 
       {/* 이용 방법 */}
       <section className="py-16 bg-slate-900">
@@ -155,29 +120,6 @@ export default async function Home() {
           </div>
         </div>
       </section>
-
-      {/* 신규 서비스 */}
-      {newServices.length > 0 && (
-        <section className="py-16">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-end justify-between mb-8">
-              <div>
-                <span className="inline-block text-xs font-semibold text-green-600 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full mb-2">✨ 신규</span>
-                <h2 className="text-2xl font-bold text-slate-900">새로 추가된 서비스</h2>
-                <p className="mt-1 text-sm text-slate-500">최신 트렌드를 반영한 마케팅 서비스</p>
-              </div>
-              <Link href="/services?badge=신규" className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                전체보기 <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {newServices.map((service) => (
-                <ServiceCard key={service.id} service={service} />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* 보증 배너 */}
       <section className="py-10 bg-white border-y border-slate-100">
