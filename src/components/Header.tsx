@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { categories } from "@/lib/data";
 import { useCart } from "@/lib/cartContext";
@@ -12,6 +13,7 @@ import {
 
 export default function Header() {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
   const [scrolled, setScrolled]   = useState(false);
   const [menuOpen, setMenuOpen]   = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -49,7 +51,16 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center gap-4 h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/"
+              className="flex items-center gap-2 shrink-0"
+              onClick={(e) => {
+                if (pathname === "/") {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
+              }}
+            >
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <Zap className="w-4 h-4 text-white" fill="white" />
               </div>
